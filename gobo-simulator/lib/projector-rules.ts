@@ -11,18 +11,19 @@ export const FINDER_URL = `${STORE}/pages/projector-finder`;
 export const QUOTE_URL = `${STORE}/pages/request-a-quote`;
 
 export type Projector = {
-  id: string; name: string; wattage: number;
+  id: string; name: string; wattage: number; selectionWattage?: number;
   environment: readonly Environment[]; lenses: readonly LensRatio[]; url: string;
 };
 // Product capabilities and empirical distance thresholds supplied by the owner.
+// Upgraded model labels retain their prior selection capacity until supplier photometric data is available.
 // Product page URLs verified against the live store collections on 2026-10-20.
 // Prices and availability are intentionally left to the product page.
 export const PROJECTORS: readonly Projector[] = [
   { id: "indoor-35w", name: "35W Indoor Logo Projector", wattage: 35, environment: ["indoor"], lenses: [0.36, 0.5], url: `${STORE}/collections/indoor-logo-projectors/products/gobosolution-indoor-35w-logo-projector` },
-  { id: "indoor-50w", name: "50W Indoor Logo Projector", wattage: 50, environment: ["indoor"], lenses: [0.36, 0.5], url: `${STORE}/collections/indoor-logo-projectors/products/gobosolution-indoor-50w-logo-projector` },
+  { id: "indoor-55w", name: "55W Indoor Logo Projector", wattage: 55, selectionWattage: 50, environment: ["indoor"], lenses: [0.36, 0.5], url: `${STORE}/products/gobosolution-indoor-55w-logo-projector` },
   { id: "outdoor-60w", name: "60W Outdoor Logo Projector", wattage: 60, environment: ["indoor", "outdoor"], lenses: [0.36, 0.5], url: `${STORE}/collections/outdoor-logo-projectors/products/gobosolution-outdoor-60w-logo-projector` },
-  { id: "outdoor-80w", name: "80W Outdoor Logo Projector", wattage: 80, environment: ["indoor", "outdoor"], lenses: [0.36, 0.5, 0.8, 1], url: `${STORE}/collections/outdoor-logo-projectors/products/gobosolution-outdoor-80w-logo-projector` },
-  { id: "outdoor-100w", name: "100W Outdoor Logo Projector", wattage: 100, environment: ["indoor", "outdoor"], lenses: [0.36, 0.5, 0.8, 1], url: `${STORE}/collections/outdoor-logo-projectors/products/gobosolution-outdoor-100w-logo-projector` },
+  { id: "outdoor-90w", name: "90W Outdoor Logo Projector", wattage: 90, selectionWattage: 80, environment: ["indoor", "outdoor"], lenses: [0.36, 0.5, 0.8, 1], url: `${STORE}/products/gobosolution-outdoor-90w-logo-projector` },
+  { id: "outdoor-110w", name: "110W Outdoor Logo Projector", wattage: 110, selectionWattage: 100, environment: ["indoor", "outdoor"], lenses: [0.36, 0.5, 0.8, 1], url: `${STORE}/products/gobosolution-outdoor-110w-logo-projector` },
   { id: "high-160w", name: "160W High-Power Logo Projector", wattage: 160, environment: ["indoor", "outdoor"], lenses: [0.3, 0.5, 1], url: `${STORE}/collections/high-power-logo-projectors/products/gobosolution-high-power-160w-logo-projector` },
   { id: "high-200w", name: "200W High-Power Logo Projector", wattage: 200, environment: ["indoor", "outdoor"], lenses: [0.3, 0.5, 1], url: `${STORE}/collections/high-power-logo-projectors/products/gobosolution-high-power-200w-logo-projector` },
   { id: "high-300w", name: "300W High-Power Logo Projector", wattage: 300, environment: ["indoor", "outdoor"], lenses: [0.3, 0.5, 1], url: `${STORE}/collections/high-power-logo-projectors/products/gobosolution-high-power-300w-logo-projector` },
@@ -65,7 +66,7 @@ export function findProjector(input: SelectionInput): Selection {
   if (minimum === null) return { kind: "manual", message: "This distance and light level need a project-specific review." };
   const matches: Match[] = [];
   for (const projector of PROJECTORS) {
-    if (!projector.environment.includes(environment) || projector.wattage < minimum) continue;
+    if (!projector.environment.includes(environment) || (projector.selectionWattage ?? projector.wattage) < minimum) continue;
     for (const ratio of projector.lenses) {
       if (lens !== undefined && lens !== ratio) continue;
       const actualM = distanceM * ratio;
