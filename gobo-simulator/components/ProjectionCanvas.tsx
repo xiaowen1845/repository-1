@@ -2,10 +2,12 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Canvas, FabricImage, FabricObject } from "fabric";
+import type { Translate } from "../lib/localization";
 
 export type Placement = { scale: number; x: number; y: number; angle: number };
 export type CanvasHandle = { exportPNG: () => Promise<Blob> };
 type Props = Placement & {
+  translate: Translate;
   scene: string; logo: string; logoIsSvg: boolean; diameterM: number; rotating: boolean; resetKey: number;
   projectionBrightness: number; sceneBrightness: number;
   onPlacement: (placement: Partial<Placement>) => void;
@@ -223,11 +225,11 @@ const ProjectionCanvas = forwardRef<CanvasHandle, Props>(function ProjectionCanv
   }), []);
 
   return <>
-    <div className="projection-stage" ref={container} aria-label="Logo projection canvas">
+    <div className="projection-stage" ref={container} dir="ltr" aria-label={props.translate("Logo projection canvas")}>
       <canvas ref={element} />
-      {(!ready || sceneLoading || logoLoading) && !error && <div className="canvas-status" role="status">Preparing your preview…</div>}
+      {(!ready || sceneLoading || logoLoading) && !error && <div className="canvas-status" role="status">{props.translate("Preparing your preview…")}</div>}
     </div>
-    {error && <p className="error-message" role="alert">{error}</p>}
+    {error && <p className="error-message" role="alert">{props.translate(error)}</p>}
   </>;
 });
 export default ProjectionCanvas;
