@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { calibrate, fitArtwork, type Point, type Quad } from "./geometry";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { calibrate, fitArtwork, projectInstallation, type Point, type Quad } from "./geometry";
 import { downloadPng, OUTPUT_SIZE, renderCorrection } from "./render";
 import styles from "./keystone.module.css";
 
@@ -11,32 +11,49 @@ const INITIAL: Quad = [
   { x: 0.81, y: 0.77 }, { x: 0.19, y: 0.87 },
 ];
 const SQUARE: Quad = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+const AIM = { x: 0.5, y: 0.5 };
+const INSTALLATION_FIELDS = [
+  { key: "x", label: "X · Horizontal offset (m)", hint: "Positive to the right" },
+  { key: "y", label: "Y · Vertical offset (m)", hint: "Positive above the target" },
+  { key: "z", label: "Z · Perpendicular distance (m)", hint: "Measure straight out from the surface" },
+  { key: "ratio", label: "Lens ratio · 1 : width", hint: "Enter 0.5 for a 1:0.5 lens" },
+] as const;
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 
 export default function KeystoneTool() {
   const [corners, setCorners] = useState<Quad>(INITIAL);
+  const [usePosition, setUsePosition] = useState(false);
+  const [position, setPosition] = useState({ x: "0", y: "0", z: "", ratio: "" });
+  const installation = useMemo(() => {
+    if (Object.values(position).some(value => value.trim() === "")) return null;
+    return projectInstallation({
+      x: Number(position.x), y: Number(position.y), z: Number(position.z), widthRatio: Number(position.ratio),
+    });
+  }, [position]);
   const [artwork, setArtwork] = useState<{ image: ImageData; url: string; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const stage = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLCanvasElement>(null);
   const uploadId = useRef(0);
-  const toWall = calibrate(corners);
-  const target = toWall && artwork ? fitArtwork(corners, artwork.image.width / artwork.image.height) : null;
+  const outline = usePosition ? installation?.corners : corners;
+  const toWall = useMemo(() => outline ? calibrate(outline) : null, [outline]);
+  const target = useMemo(() => toWall && outline && artwork
+    ? fitArtwork(outline, artwork.image.width / artwork.image.height, usePosition ? AIM : undefined)
+    : null, [toWall, outline, artwork, usePosition]);
 
   useEffect(() => {
     const ctx = preview.current?.getContext("2d");
     if (!ctx) return;
-    const map = calibrate(corners);
-    if (!map || !artwork) {
+    if (!toWall || !target || !artwork) {
       ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
       return;
     }
     const frame = requestAnimationFrame(() => {
-      renderCorrection(ctx, artwork.image, map, fitArtwork(corners, artwork.image.width / artwork.image.height));
+      renderCorrection(ctx, artwork.image, toWall, target);
     });
     return () => cancelAnimationFrame(frame);
-  }, [corners, artwork]);
+  }, [toWall, target, artwork]);
 
   useEffect(() => {
     return () => {
@@ -136,9 +153,36 @@ export default function KeystoneTool() {
       <div className={styles.layout}>
         <section>
           <h2>1. Calibrate the projection</h2>
-          <p>Project the square pattern at the final mounting angle, with the same lens and orientation you will use for the artwork. Keep the entire white border visible.</p>
-          <button type="button" onClick={() => void exportImage("calibration")}>Download calibration pattern</button>
-          <p>Measure the four outer corners on the wall within a square reference area that contains them all. Use the same scale horizontally and vertically, with the origin at the top left. Move points 1–4 to match those positions.</p>
+          <fieldset className={styles.mode}>
+            <legend>Calibration method</legend>
+            <label><input type="radio" name="keystone-method" checked={!usePosition}
+              onChange={() => setUsePosition(false)} /> Measured corners</label>
+            <label><input type="radio" name="keystone-method" checked={usePosition}
+              onChange={() => setUsePosition(true)} /> X/Y/Z installation measurements</label>
+          </fieldset>
+          {usePosition ? <>
+            <p>Face the projection surface and use the intended artwork center as the origin. Measure from the projector lens. This estimate assumes a flat surface, a level image, and a lens aimed at the target center.</p>
+            <div className={styles.measurements}>
+              {INSTALLATION_FIELDS.map(({ key, label, hint }) => (
+                <label key={key}>
+                  {label}
+                  <input type="number" step="any" inputMode="decimal" value={position[key]}
+                    aria-describedby={`keystone-hint-${key}`}
+                    onChange={event => setPosition({ ...position, [key]: event.target.value })} />
+                  <span id={`keystone-hint-${key}`}>{hint}</span>
+                </label>
+              ))}
+            </div>
+            {installation ? (
+              <p role="status">Lens to target {installation.distance.toFixed(2)} m · Footprint {installation.width.toFixed(2)} × {installation.height.toFixed(2)} m</p>
+            ) : (
+              <p role="status">Enter all four values. Z and the lens ratio must be positive, and all four image corners must reach the surface.</p>
+            )}
+          </> : <>
+            <p>Project the square pattern at the final mounting angle, with the same lens and orientation you will use for the artwork. Keep the entire white border visible.</p>
+            <button type="button" onClick={() => void exportImage("calibration")}>Download calibration pattern</button>
+            <p>Measure the four outer corners on the wall within a square reference area that contains them all. Use the same scale horizontally and vertically, with the origin at the top left. Move points 1–4 to match those positions.</p>
+          </>}
           <div className={styles.stage} ref={stage} aria-label="Square wall reference">
             {target && artwork && (
               /* eslint-disable-next-line @next/next/no-img-element -- Browser-local artwork blob. */
@@ -147,10 +191,11 @@ export default function KeystoneTool() {
                   width: `${target.width * 100}%`, height: `${target.height * 100}%` }} />
             )}
             <svg viewBox="0 0 100 100" aria-hidden="true">
-              <polygon points={corners.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
-                fill="none" stroke={toWall ? "#ffc77c" : "#ff9a9a"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+              {outline && <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
+                fill="none" stroke={toWall ? "#ffc77c" : "#ff9a9a"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
+              {usePosition && installation && <circle cx="50" cy="50" r="1" fill="#ffc77c" />}
             </svg>
-            {corners.map((point, index) => (
+            {!usePosition && corners.map((point, index) => (
               <button key={NAMES[index]} type="button" className={styles.handle}
                 style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
                 aria-label={`${NAMES[index]} corner, X ${Math.round(point.x * 100)}%, Y ${Math.round(point.y * 100)}%. Move with arrow keys.`}
@@ -167,14 +212,16 @@ export default function KeystoneTool() {
                 }}>{index + 1}</button>
             ))}
           </div>
-          <div className={styles.actions}>
-            <button type="button" onClick={() => setCorners(INITIAL)}>Reset to example</button>
-            <button type="button" onClick={() => setCorners(SQUARE)}>Set to square</button>
-          </div>
-          <p className={styles.coordinates}>
-            {corners.map((point, index) => `${index + 1}. ${Math.round(point.x * 100)}%, ${Math.round(point.y * 100)}%`).join(" · ")}
-          </p>
-          {!toWall && <p role="alert">Use four distinct corners in order. The outline must be convex and its edges must not cross.</p>}
+          {!usePosition && <>
+            <div className={styles.actions}>
+              <button type="button" onClick={() => setCorners(INITIAL)}>Reset to example</button>
+              <button type="button" onClick={() => setCorners(SQUARE)}>Set to square</button>
+            </div>
+            <p className={styles.coordinates}>
+              {corners.map((point, index) => `${index + 1}. ${Math.round(point.x * 100)}%, ${Math.round(point.y * 100)}%`).join(" · ")}
+            </p>
+            {!toWall && <p role="alert">Use four distinct corners in order. The outline must be convex and its edges must not cross.</p>}
+          </>}
         </section>
 
         <section>
@@ -192,7 +239,9 @@ export default function KeystoneTool() {
           <h3>Pre-distorted artwork</h3>
           <canvas ref={preview} width={480} height={480} className={styles.output}
             role="img" aria-label="Preview of the pre-distorted artwork" />
-          <p>The orange outline shows the measured footprint. The artwork inside it shows the expected shape on the wall. Use the corrected PNG at the same size, position and orientation as the calibration pattern.</p>
+          <p>The orange outline shows the projection footprint. The artwork inside it shows the expected shape on the wall. {usePosition
+              ? " Keep the modeled lens position and aim when projecting the corrected image."
+              : " Use the corrected PNG at the same size, position and orientation as the calibration pattern."}</p>
           <button type="button" disabled={!target || loading} onClick={() => void exportImage("correction")}>
             Download corrected PNG
           </button>

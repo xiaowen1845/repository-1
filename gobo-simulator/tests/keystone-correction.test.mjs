@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { calibrate, fitArtwork } from "../app/keystone-correction/geometry.ts";
+import { calibrate, fitArtwork, projectInstallation } from "../app/keystone-correction/geometry.ts";
 import { renderCorrection } from "../app/keystone-correction/render.ts";
 
 const square = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
@@ -57,4 +57,48 @@ test("a narrowing wall footprint requires a widening correction on the projector
   assert.ok(opaquePixels(20) > 0);
   assert.ok(opaquePixels(70) > opaquePixels(20));
   assert.equal(output[3], 0);
+});
+
+const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-10, `${actual} != ${expected}`);
+
+test("a perpendicular installation uses the Simulator's width-to-distance lens convention", () => {
+  const projection = projectInstallation({ x: 0, y: 0, z: 4, widthRatio: 0.5 });
+  close(projection.distance, 4);
+  close(projection.width, 2);
+  close(projection.height, 2);
+  close(projection.corners[0].x, 0.05);
+  close(projection.corners[0].y, 0.05);
+});
+
+test("combined installation offsets preserve the optical aim point", () => {
+  const { corners, distance } = projectInstallation({ x: 1, y: 2, z: 4, widthRatio: 0.5 });
+  close(distance, Math.sqrt(21));
+  const aim = calibrate(corners)(0.5, 0.5);
+  close(aim.x, 0.5);
+  close(aim.y, 0.5);
+  const target = fitArtwork(corners, 1.5, aim);
+  close(target.left + target.width / 2, aim.x);
+  close(target.top + target.height / 2, aim.y);
+});
+
+test("a projector to the right makes the far side of the footprint taller, and vice versa", () => {
+  const right = projectInstallation({ x: 2, y: 0, z: 4, widthRatio: 0.5 }).corners;
+  const left = projectInstallation({ x: -2, y: 0, z: 4, widthRatio: 0.5 }).corners;
+  assert.ok(right[3].y - right[0].y > right[2].y - right[1].y);
+  close(right[0].x + left[1].x, 1);
+  close(right[0].y, left[1].y);
+});
+
+test("a projector above the aim point makes the bottom of the footprint wider", () => {
+  const { corners } = projectInstallation({ x: 0, y: 2, z: 4, widthRatio: 0.5 });
+  assert.ok(corners[2].x - corners[3].x > corners[1].x - corners[0].x);
+});
+
+test("invalid or grazing installations produce no footprint", () => {
+  for (const installation of [
+    { x: 0, y: 0, z: 0, widthRatio: 0.5 },
+    { x: 0, y: 0, z: 4, widthRatio: 0 },
+    { x: NaN, y: 0, z: 4, widthRatio: 0.5 },
+    { x: 4, y: 0, z: 1, widthRatio: 0.5 },
+  ]) assert.equal(projectInstallation(installation), null);
 });

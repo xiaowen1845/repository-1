@@ -31,14 +31,65 @@ export function calibrate(corners: Quad) {
   };
 }
 
-// Fit an upright, aspect-preserving rectangle about the mean of the four
-// corners. For each edge, constrain the rectangle corner nearest that edge.
-export function fitArtwork(corners: Quad, aspect: number): Rectangle {
-  const center = corners.reduce((p, c) => ({ x: p.x + c.x / 4, y: p.y + c.y / 4 }), { x: 0, y: 0 });
+// For each edge, constrain the artwork corner nearest that edge.
+export function fitArtwork(
+  corners: Quad,
+  aspect: number,
+  center = corners.reduce((p, c) => ({ x: p.x + c.x / 4, y: p.y + c.y / 4 }), { x: 0, y: 0 }),
+): Rectangle {
   const halfHeight = Math.min(...corners.map((a, i) => {
     const b = corners[(i + 1) % 4];
     return cross(a, b, center) / (Math.abs(b.y - a.y) * aspect + Math.abs(b.x - a.x));
   }));
   const halfWidth = halfHeight * aspect;
   return { left: center.x - halfWidth, top: center.y - halfHeight, width: 2 * halfWidth, height: 2 * halfHeight };
+}
+
+export type Installation = { x: number; y: number; z: number; widthRatio: number };
+type Vector = readonly [number, number, number];
+const IMAGE_CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
+
+// Model a centered square image on a plane at z = 0, with the optical axis
+// aimed at the origin. X points right and Y points up as seen facing the wall.
+export function projectInstallation({ x, y, z, widthRatio }: Installation) {
+  if (![x, y, z, widthRatio].every(Number.isFinite) || z <= 0 || widthRatio <= 0) return null;
+
+  const horizontalDistance = Math.hypot(x, z);
+  const distance = Math.hypot(horizontalDistance, y);
+  const forward: Vector = [-x / distance, -y / distance, -z / distance];
+  const right: Vector = [z / horizontalDistance, 0, -x / horizontalDistance];
+  // Keep the image level by making its horizontal axis parallel to the wall.
+  const up: Vector = [right[2] * -forward[1], horizontalDistance / distance, right[0] * forward[1]];
+  const halfWidthRatio = widthRatio / 2;
+  const footprint = IMAGE_CORNERS.flatMap(([column, row]) => {
+    const u = column * halfWidthRatio;
+    const v = -row * halfWidthRatio;
+    const rayZ = forward[2] + u * right[2] + v * up[2];
+    if (!(rayZ < -1e-8)) return [];
+    const t = -z / rayZ;
+    const wallX = x + t * (forward[0] + u * right[0] + v * up[0]);
+    const wallY = y + t * (forward[1] + v * up[1]);
+    return [{ x: wallX, y: -wallY }];
+  });
+  if (footprint.length !== 4) return null;
+
+  const extent = Math.max(...footprint.map(p => Math.max(Math.abs(p.x), Math.abs(p.y))));
+  if (!Number.isFinite(extent) || extent <= 0) return null;
+  // Use a single scale for both axes and keep the aim point at the grid center.
+  const scale = 0.45 / extent;
+  const normalize = (index: number) => ({
+    x: 0.5 + footprint[index].x * scale,
+    y: 0.5 + footprint[index].y * scale,
+  });
+  const corners: Quad = [normalize(0), normalize(1), normalize(2), normalize(3)];
+  if (!calibrate(corners)) return null;
+
+  const xs = footprint.map(p => p.x);
+  const ys = footprint.map(p => p.y);
+  return {
+    corners,
+    distance,
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys),
+  };
 }
