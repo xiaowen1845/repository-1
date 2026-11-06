@@ -19,6 +19,10 @@ const INSTALLATION_FIELDS = [
   { key: "z", label: "Z · Perpendicular distance (m)", hint: "Measure straight out from the surface" },
   { key: "ratio", label: "Lens ratio · 1 : width", hint: "Enter 0.5 for a 1:0.5 lens" },
 ] as const;
+const signedPercent = (value: number) => {
+  const percent = Math.round(value * 100);
+  return `${percent > 0 ? "+" : ""}${percent}%`;
+};
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 
 export default function KeystoneTool() {
@@ -43,9 +47,12 @@ export default function KeystoneTool() {
   const uploadId = useRef(0);
   const outline = usePosition ? installation?.corners : corners;
   const mapping = useMemo(() => outline ? calibrate(outline) : null, [outline]);
-  const target = useMemo(() => mapping && outline && artwork
-    ? fitArtwork(outline, artwork.image.width / artwork.image.height, usePosition ? AIM : undefined)
-    : null, [mapping, outline, artwork, usePosition]);
+  const center = useMemo(() => mapping?.toWall(AIM.x, AIM.y), [mapping]);
+  const target = useMemo(() => center && outline && artwork
+    ? fitArtwork(outline, artwork.image.width / artwork.image.height, center)
+    : null, [center, outline, artwork]);
+  const cornerOffsets = center && corners.map(point =>
+    `X ${signedPercent(point.x - center.x)}, Y ${signedPercent(center.y - point.y)}`);
 
   useEffect(() => {
     const output = preview.current?.getContext("2d");
@@ -133,6 +140,9 @@ export default function KeystoneTool() {
         context.fillStyle = "black";
         context.fillRect(16, 16, OUTPUT_SIZE - 32, OUTPUT_SIZE - 32);
         context.fillStyle = "white";
+        const midpoint = OUTPUT_SIZE / 2;
+        context.fillRect(midpoint - 20, midpoint - 2, 40, 4);
+        context.fillRect(midpoint - 2, midpoint - 20, 4, 40);
         context.font = "bold 56px sans-serif";
         context.textAlign = "center";
         context.textBaseline = "middle";
@@ -163,9 +173,9 @@ export default function KeystoneTool() {
           <fieldset className={styles.mode}>
             <legend>Calibration method</legend>
             <label><input type="radio" name="keystone-method" checked={!usePosition}
-              onChange={() => setUsePosition(false)} /> Measured corners</label>
+              onChange={() => setUsePosition(false)} /> Installed projector · measure a test projection</label>
             <label><input type="radio" name="keystone-method" checked={usePosition}
-              onChange={() => setUsePosition(true)} /> X/Y/Z installation measurements</label>
+              onChange={() => setUsePosition(true)} /> Plan an installation · enter X/Y/Z</label>
           </fieldset>
           {usePosition ? <>
             <p>Face the projection surface and use the intended artwork center as the origin. Measure from the projector lens. This estimate assumes a flat surface, a level image, and a lens aimed at the target center.</p>
@@ -189,18 +199,20 @@ export default function KeystoneTool() {
             <p>Project the square pattern at the final mounting angle, with the same lens and orientation you will use for the artwork. Keep the entire white border visible.</p>
             <button type="button" onClick={() => void exportImage("calibration")}>Download calibration pattern</button>
             {downloadError === "calibration" && <p className={styles.error} role="alert">The pattern could not be downloaded. Try again.</p>}
-            <p>Measure the four outer corners on the wall within a square reference area that contains them all. Use the same scale horizontally and vertically, with the origin at the top left. Move points 1–4 from the example to match those positions.</p>
+            <p>Use the projected center cross as (0, 0). Pick a square reference area centered on the cross and large enough to contain all four corners. Move points 1–4 to match the white border, starting at the top left and going clockwise.</p>
           </>}
           <div className={styles.stage} ref={stage} role="group" aria-label="Square wall reference">
             <svg viewBox="0 0 100 100" aria-hidden="true">
               {outline && <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
                 fill="none" stroke={mapping ? "#ffc77c" : "#ff9a9a"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
-              {usePosition && installation && <circle cx="50" cy="50" r="1" fill="#ffc77c" />}
+              {center && (
+                <circle cx={center.x * 100} cy={center.y * 100} r="1.5" fill="#ffc77c" />
+              )}
             </svg>
             {!usePosition && corners.map((point, index) => (
               <button key={NAMES[index]} type="button" className={styles.handle}
                 style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
-                aria-label={`${NAMES[index]} corner, X ${Math.round(point.x * 100)}%, Y ${Math.round(point.y * 100)}%. Move with arrow keys.`}
+                aria-label={`${NAMES[index]} corner. ${cornerOffsets?.[index] ?? ""} Move with arrow keys.`}
                 onPointerDown={event => event.currentTarget.setPointerCapture(event.pointerId)}
                 onPointerMove={event => dragCorner(event, index)}
                 onKeyDown={event => {
@@ -219,11 +231,14 @@ export default function KeystoneTool() {
               <button type="button" onClick={() => setCorners(INITIAL)}>Reset to example</button>
               <button type="button" onClick={() => setCorners(SQUARE)}>Set to square</button>
             </div>
-            <ul className={styles.cornerList} aria-label="Corner coordinates">
-              {corners.map((point, index) => (
-                <li key={NAMES[index]}>{index + 1}. {Math.round(point.x * 100)}%, {Math.round(point.y * 100)}%</li>
-              ))}
-            </ul>
+            {cornerOffsets && <>
+              <p className={styles.coordinates}>Offsets from the center dot, as a percentage of the reference square. Positive X is right. Positive Y is up.</p>
+              <ul className={styles.cornerList} aria-label="Corner offsets from the projection center">
+                {cornerOffsets.map((offset, index) => (
+                  <li key={NAMES[index]}>{index + 1}. {offset}</li>
+                ))}
+              </ul>
+            </>}
             {!mapping && <p className={styles.error} role="alert">Use four distinct corners in order. The outline must be convex and its edges must not cross.</p>}
           </>}
         </section>
@@ -249,7 +264,7 @@ export default function KeystoneTool() {
 
           <section className={styles.panel} aria-labelledby="projection-comparison">
             <h2 id="projection-comparison">3. Compare on the wall</h2>
-            <p>Both previews show the same wall area and projection footprint. Before uses artwork fitted to the projector image. After shows the upright artwork fitted within the footprint.</p>
+            <p>Both previews show the same wall area and projection footprint. Before uses artwork fitted to the projector image. After shows the expected upright artwork at its original proportions, centered inside the footprint.</p>
             {!target && <p className={styles.coordinates}>Complete calibration and choose artwork to see the comparison.</p>}
             <div className={styles.comparisonGrid}>
               {[

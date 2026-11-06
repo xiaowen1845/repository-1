@@ -125,3 +125,11 @@ test("the uncorrected wall preview tapers while the corrected preview stays rect
   assert.ok(opaqueWidth(after, 25) > 0);
   assert.equal(opaqueWidth(after, 25), opaqueWidth(after, 75));
 });
+
+test("measured calibration centers the upright artwork on the projected center cross", () => {
+  const center = calibrate(trapezoid).toWall(0.5, 0.5);
+  const target = fitArtwork(trapezoid, 1, center);
+  close(target.left + target.width / 2, 0.5);
+  close(target.top + target.height / 2, 0.625);
+  assert.ok(target.top + target.height <= 1);
+});
