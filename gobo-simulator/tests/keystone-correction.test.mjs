@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { calibrate, fitArtwork, projectInstallation } from "../app/keystone-correction/geometry.ts";
+import { calibrate, convertDistance, fitArtwork, projectInstallation } from "../app/keystone-correction/geometry.ts";
 import { renderArtwork } from "../app/keystone-correction/render.ts";
 
 const square = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
@@ -132,4 +132,18 @@ test("measured calibration centers the upright artwork on the projected center c
   close(target.left + target.width / 2, 0.5);
   close(target.top + target.height / 2, 0.625);
   assert.ok(target.top + target.height <= 1);
+});
+
+test("metres and inches preserve signed offsets and the projected footprint", () => {
+  assert.equal(convertDistance(1, "in", "m"), 0.0254);
+  close(convertDistance(-0.6, "m", "in"), -23.62204724409449);
+  const metres = { x: -0.6, y: 0.4, z: 3, widthRatio: 0.5 };
+  const roundTrip = value => convertDistance(convertDistance(value, "m", "in"), "in", "m");
+  const original = projectInstallation(metres);
+  const converted = projectInstallation({
+    x: roundTrip(metres.x), y: roundTrip(metres.y), z: roundTrip(metres.z), widthRatio: metres.widthRatio,
+  });
+  close(converted.width, original.width);
+  close(converted.height, original.height);
+  close(converted.distance, original.distance);
 });

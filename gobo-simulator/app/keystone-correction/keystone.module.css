@@ -54,7 +54,7 @@
 .cornerList { display: flex; flex-wrap: wrap; gap: .25rem .8rem; margin-top: .75rem; }
 .cornerList li { white-space: nowrap; }
 
-.stage, .output {
+.stage {
   position: relative;
   display: block;
   width: calc(100% - 3rem);
@@ -90,12 +90,6 @@
 .handle:active { cursor: grabbing; }
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 
-.output {
-  max-width: 260px;
-  height: auto;
-  background: conic-gradient(#2b3b51 25%, #1b283a 0 50%, #2b3b51 0 75%, #1b283a 0) 0 0 / 24px 24px;
-}
-
 @media (max-width: 760px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
 }
@@ -124,8 +118,8 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
 }
 
-.measurements label { display: grid; gap: .25rem; align-content: start; }
-.measurements input {
+.unit, .measurements label { display: grid; gap: .25rem; align-content: start; }
+.unit select, .measurements input {
   min-width: 0;
   width: 100%;
   min-height: 44px;
@@ -151,3 +145,13 @@
 .wallPreview { position: relative; background: #1b283a; outline: 1px solid #697990; }
 .wallPreview canvas { display: block; width: 100%; height: auto; }
 .wallPreview svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.installationDiagram { margin: 1rem 0; }
+.installationDiagram svg { display: block; width: 100%; max-width: 380px; margin: auto; }
+.installationDiagram text { fill: #e1e9f4; font-size: 12px; }
+.installationDiagram figcaption { color: #c1ccdf; font-size: .875rem; }
+.wallPlane { fill: #1b283a; stroke: #697990; }
+.axisLine { fill: none; stroke: #ffc77c; stroke-width: 2; }
+.axisDot { fill: #ffc77c; }
+.aimLine { fill: none; stroke: #c1ccdf; stroke-dasharray: 4 4; }
+.installationDiagram .axisLabel { fill: #ffc77c; font-weight: 700; }

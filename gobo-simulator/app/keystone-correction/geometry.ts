@@ -105,3 +105,11 @@ export function projectInstallation({ x, y, z, widthRatio }: Installation) {
     height: Math.max(...ys) - Math.min(...ys),
   };
 }
+
+export type DistanceUnit = "m" | "in";
+const METRES_PER_INCH = 0.0254;
+
+export function convertDistance(value: number, from: DistanceUnit, to: DistanceUnit) {
+  if (from === to) return value;
+  return from === "in" ? value * METRES_PER_INCH : value / METRES_PER_INCH;
+}
