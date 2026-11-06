@@ -81,20 +81,12 @@ export function projectInstallation({ x, y, z, widthRatio }: Installation) {
     const t = -z / rayZ;
     const wallX = x + t * (forward[0] + u * right[0] + v * up[0]);
     const wallY = y + t * (forward[1] + v * up[1]);
-    return [{ x: wallX, y: -wallY }];
+    return [{ x: wallX, y: wallY }];
   });
   if (footprint.length !== 4) return null;
 
-  const extent = Math.max(...footprint.map(p => Math.max(Math.abs(p.x), Math.abs(p.y))));
-  if (!Number.isFinite(extent) || extent <= 0) return null;
-  // Use a single scale for both axes and keep the aim point at the grid center.
-  const scale = 0.45 / extent;
-  const normalize = (index: number) => ({
-    x: 0.5 + footprint[index].x * scale,
-    y: 0.5 + footprint[index].y * scale,
-  });
-  const corners: Quad = [normalize(0), normalize(1), normalize(2), normalize(3)];
-  if (!calibrate(corners)) return null;
+  const corners = normalizeFootprint(footprint);
+  if (!corners) return null;
 
   const xs = footprint.map(p => p.x);
   const ys = footprint.map(p => p.y);
@@ -104,6 +96,22 @@ export function projectInstallation({ x, y, z, widthRatio }: Installation) {
     width: Math.max(...xs) - Math.min(...xs),
     height: Math.max(...ys) - Math.min(...ys),
   };
+}
+
+// Convert signed surface distances to a square preview without changing aspect.
+export function normalizeFootprint(points: readonly Point[]): Quad | null {
+  if (points.length !== 4) return null;
+  const extent = Math.max(...points.map(p => Math.max(Math.abs(p.x), Math.abs(p.y))));
+  if (!Number.isFinite(extent) || extent <= 0) return null;
+
+  const origin = { x: 0.5, y: 0.5 };
+  const normalize = ({ x, y }: Point) => ({
+    x: origin.x + (x / extent) * 0.45,
+    y: origin.y - (y / extent) * 0.45,
+  });
+  const corners: Quad = [normalize(points[0]), normalize(points[1]), normalize(points[2]), normalize(points[3])];
+  if (!calibrate(corners) || corners.some((p, i) => cross(p, corners[(i + 1) % 4], origin) <= 0)) return null;
+  return corners;
 }
 
 export type DistanceUnit = "m" | "in";

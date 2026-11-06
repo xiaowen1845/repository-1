@@ -26,7 +26,7 @@
   background: #101a2b;
 }
 
-.tool button:not(.handle) {
+.tool button {
   min-height: 44px;
   padding: .6rem .85rem;
   border-radius: .45rem;
@@ -37,18 +37,11 @@
 }
 
 .tool button:disabled { opacity: .55; cursor: default; }
-.tool .actions button {
-  border: 1px solid #697990;
-  background: transparent;
-  color: inherit;
-}
 .error { color: #ffb4b4; }
 .tool :focus-visible { outline: 2px solid white; outline-offset: 3px; }
 .upload { display: grid; justify-items: start; gap: .35rem; margin: .75rem 0; }
 .tool .upload p { margin: 0; }
-.coordinates, .cornerList { color: #c1ccdf; font-size: .875rem; overflow-wrap: anywhere; }
-.cornerList { display: flex; flex-wrap: wrap; gap: .25rem .8rem; margin-top: .75rem; }
-.cornerList li { white-space: nowrap; }
+.coordinates { color: #c1ccdf; font-size: .875rem; overflow-wrap: anywhere; }
 
 .stage {
   position: relative;
@@ -69,22 +62,18 @@
 .stage svg { position: absolute; pointer-events: none; }
 .stage svg { inset: 0; width: 100%; height: 100%; overflow: visible; }
 
-.handle {
-  position: absolute;
-  width: 44px;
-  height: 44px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  border: 1px solid #141a24;
-  color: #141a24;
-  background: #ffc77c;
-  font-weight: 700;
-  touch-action: none;
-  cursor: grab;
-}
+.stage text { fill: #ffc77c; stroke: #1b283a; stroke-width: 1.4; paint-order: stroke; font-size: 6px; font-weight: 700; }
 
-.handle:active { cursor: grabbing; }
-.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.cornerFields {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+  padding: .55rem;
+  border: 1px solid #697990;
+  border-radius: .45rem;
+}
+.cornerFields legend { padding-inline: .2rem; }
 
 @media (max-width: 760px) {
   .layout { grid-template-columns: minmax(0, 1fr); }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { calibrate, convertDistance, fitArtwork, projectInstallation } from "../app/keystone-correction/geometry.ts";
+import { calibrate, convertDistance, fitArtwork, normalizeFootprint, projectInstallation } from "../app/keystone-correction/geometry.ts";
 import { renderArtwork } from "../app/keystone-correction/render.ts";
 
 const square = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
@@ -146,4 +146,24 @@ test("metres and inches preserve signed offsets and the projected footprint", ()
   close(converted.width, original.width);
   close(converted.height, original.height);
   close(converted.distance, original.distance);
+});
+
+test("measured offsets share one origin and one scale in metres or inches", () => {
+  const points = [{ x: -0.66, y: 0.55 }, { x: 0.54, y: 0.45 }, { x: 0.54, y: -0.45 }, { x: -0.66, y: -0.55 }];
+  const corners = normalizeFootprint(points);
+  const inches = normalizeFootprint(points.map(({ x, y }) =>
+    ({ x: convertDistance(x, "m", "in"), y: convertDistance(y, "m", "in") })));
+  assert.ok(corners[0].x < 0.5 && corners[0].y < 0.5);
+  corners.forEach(({ x, y }, i) => {
+    close(x, inches[i].x);
+    close(y, inches[i].y);
+  });
+  const center = calibrate(corners).toWall(0.5, 0.5);
+  close(center.x, 0.5);
+  close(center.y, 0.5);
+});
+
+test("measured offsets reject crossed corners and an origin outside the projection", () => {
+  assert.equal(normalizeFootprint([square[0], square[2], square[1], square[3]]), null);
+  assert.equal(normalizeFootprint([{ x: 1, y: 2 }, { x: 2, y: 2 }, { x: 2, y: 1 }, { x: 1, y: 1 }]), null);
 });

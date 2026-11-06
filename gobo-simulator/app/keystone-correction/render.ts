@@ -1,7 +1,5 @@
 import type { Point, Rectangle } from "./geometry";
 
-export const OUTPUT_SIZE = 1024;
-
 function sample(source: ImageData, x: number, y: number, output: Uint8ClampedArray, offset: number) {
   const { width, height, data } = source;
   const sx = Math.max(0, Math.min(width - 1, x * width - 0.5));
@@ -49,23 +47,4 @@ export function renderArtwork(
     }
   }
   context.putImageData(output, 0, 0);
-}
-
-export function downloadPng(canvas: HTMLCanvasElement, filename: string) {
-  return new Promise<void>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Could not create PNG."));
-        return;
-      }
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      resolve();
-    }, "image/png");
-  });
 }
