@@ -18,8 +18,8 @@ const AIM = { x: 0.5, y: 0.5 };
 const BRAND_LENS_RATIOS = LENSES.map(ratio => `1:${ratio}`).join(", ");
 const DISTANCE_KEYS = ["x", "y", "z"] as const;
 const INSTALLATION_FIELDS = [
-  { key: "x", label: "X · Horizontal offset", hint: "Positive to the right" },
-  { key: "y", label: "Y · Vertical offset", hint: "Positive above the target" },
+  { key: "x", label: "X · Horizontal offset", hint: "Negative = left · Positive = right" },
+  { key: "y", label: "Y · Vertical offset", hint: "Negative = below · Positive = above" },
   { key: "z", label: "Z · Perpendicular distance", hint: "Measure straight out from the surface" },
   { key: "ratio", label: "Lens ratio · 1 : width", hint: `GoboSolution lens ratios by model: ${BRAND_LENS_RATIOS}. Enter 0.5 for 1:0.5.` },
 ] as const;
