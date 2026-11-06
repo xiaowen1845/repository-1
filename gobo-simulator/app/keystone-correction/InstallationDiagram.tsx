@@ -6,34 +6,39 @@ export default function InstallationDiagram({ unit }: { unit: DistanceUnit }) {
 
   return (
     <figure className={styles.installationDiagram}>
-      <svg viewBox="0 0 316 218" role="img" aria-labelledby="keystone-diagram-title keystone-diagram-description">
-        <title id="keystone-diagram-title">Example projector installation</title>
+      <svg viewBox="0 0 316 258" role="img" aria-labelledby="keystone-diagram-title keystone-diagram-description">
+        <title id="keystone-diagram-title">X and Y share one origin at the target center</title>
         <desc id="keystone-diagram-description">
-          X and Y are the horizontal and vertical offsets from the desired target center to the lens point on the wall.
-          Z is the perpendicular distance from the lens point to the physical lens. The dashed line shows the projector aiming at the target.
+          Facing the wall, the target center is (0, 0). Left is negative X, right is positive X,
+          down is negative Y, and up is positive Y. The example lens point is above and to the right.
+          A separate side view shows Z measured straight from the wall to the lens.
         </desc>
-        <path className={styles.wallPlane} d="M18 28 154 92 154 211 18 147Z" />
-        <text x="18" y="20">Wall</text>
-        <path className={styles.aimLine} d="M266 88 68 129" />
-        <path className={styles.axisLine} d="M68 129 125 156V88H266" />
-        <path className={styles.axisLine} d="m117 147 8 9-11 1m6-61 5-8 5 8m128-13 8 5-8 5" />
-        <circle cx="68" cy="129" r="3.5" className={styles.axisDot} />
-        <path className={styles.leader} d="M125 82 116 64H82" />
-        <circle cx="125" cy="88" r="3.5" className={styles.axisDot} />
-        <text x="83" y="58">Lens point on wall</text>
-        <text x="24" y="123">Target</text>
-        <text x="24" y="138">center</text>
-        <text className={styles.axisLabel} x="92" y="163">X</text>
-        <text className={styles.axisLabel} x="107" y="117">Y</text>
-        <text className={styles.axisLabel} x="192" y="78">Z</text>
-        <rect className={styles.wallPlane} x="267" y="75" width="35" height="26" rx="4" />
-        <circle cx="266" cy="88" r="4" className={styles.axisDot} />
-        <text x="241" y="120">Projector</text>
-        <text x="241" y="135">lens</text>
+
+        <text x="12" y="20">Facing the wall</text>
+        <path className={styles.axisLine} d="M55 104H261M156 35V169M61 99l-6 5 6 5m194-10 6 5-6 5M151 41l5-6 5 6m-10 122 5 6 5-6" />
+        <path className={styles.guideLine} d="M156 65H219V104" />
+        <circle cx="219" cy="65" r="4" className={styles.lensDot} />
+        <text x="219" y="54" textAnchor="middle">Lens point on wall</text>
+        <circle cx="156" cy="104" r="5" className={styles.axisDot} />
+        <text className={styles.axisLabel} x="145" y="122" textAnchor="end">(0, 0) Target center</text>
+        <text className={styles.axisLabel} x="49" y="108" textAnchor="end">−X Left</text>
+        <text className={styles.axisLabel} x="266" y="108">+X Right</text>
+        <text className={styles.axisLabel} x="156" y="26" textAnchor="middle">+Y Up</text>
+        <text className={styles.axisLabel} x="156" y="186" textAnchor="middle">−Y Down</text>
+
+        <path className={styles.diagramDivider} d="M12 195H304" />
+        <text x="12" y="212">Side view</text>
+        <path className={styles.diagramDivider} d="M69 217V249" />
+        <path className={styles.axisLine} d="M69 231H237m-7-5 7 5-7 5" />
+        <circle cx="69" cy="231" r="4" className={styles.lensDot} />
+        <rect className={styles.wallPlane} x="239" y="220" width="35" height="22" rx="3" />
+        <text className={styles.axisLabel} x="153" y="222" textAnchor="middle">+Z</text>
+        <text x="69" y="257" textAnchor="middle">Wall</text>
+        <text x="256" y="257" textAnchor="middle">Lens</text>
       </svg>
       <figcaption>
-        Example. The lens point is {example(0.6)} right and {example(0.4)} above the target center.
-        The lens is {example(3)} straight out from that point. The dashed line shows the aim toward the target center.
+        Example. The lens point is {example(0.6)} right and {example(0.4)} up from the target center,
+        so X and Y are both positive. Z is {example(3)} straight out from the wall.
       </figcaption>
     </figure>
   );

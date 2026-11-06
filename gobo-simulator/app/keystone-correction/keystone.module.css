@@ -149,6 +149,7 @@
 .wallPlane { fill: #1b283a; stroke: #697990; }
 .axisLine { fill: none; stroke: #ffc77c; stroke-width: 2; }
 .axisDot { fill: #ffc77c; }
-.leader { fill: none; stroke: #c1ccdf; }
-.aimLine { fill: none; stroke: #c1ccdf; stroke-dasharray: 4 4; }
+.lensDot { fill: #e1e9f4; }
+.diagramDivider { fill: none; stroke: #697990; }
+.guideLine { fill: none; stroke: #c1ccdf; stroke-dasharray: 4 4; }
 .installationDiagram .axisLabel { fill: #ffc77c; font-weight: 700; }

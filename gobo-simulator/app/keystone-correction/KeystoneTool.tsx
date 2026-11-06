@@ -198,9 +198,9 @@ export default function KeystoneTool() {
           </fieldset>
           {usePosition ? <>
             <ol className={styles.measurementGuide}>
-              <li>Face the wall and mark where you want the center of the artwork to land.</li>
+              <li>Face the wall. Mark where you want the artwork center to land. This is the only origin, (0, 0).</li>
               <li>From the lens, follow a line straight to the wall at a right angle. Mark that spot as the lens point.</li>
-              <li>Measure X and Y on the wall from the target center to the lens point. Measure Z from the lens point straight out to the lens.</li>
+              <li>From that same origin, measure X left or right and Y down or up to the lens point. Measure Z straight out from the wall to the lens.</li>
             </ol>
             <p>The calculation assumes a flat wall and a level image, with the projector aimed at the target center.</p>
             <InstallationDiagram unit={unit} />
