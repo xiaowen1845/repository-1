@@ -20,8 +20,8 @@ const BRAND_LENS_RATIOS = LENSES.map(ratio => `1:${ratio}`).join(", ");
 const DISTANCE_KEYS = ["x", "y", "z"] as const;
 const INSTALLATION_FIELDS = [
   { key: "x", label: "X · Horizontal offset", hint: "Lens point left of target = negative. Right = positive." },
-  { key: "y", label: "Y · Vertical offset", hint: "Lens point below target = negative. Above = positive." },
-  { key: "z", label: "Z · Perpendicular distance", hint: "Straight from the wall to the lens. Always positive." },
+  { key: "y", label: "Y · Up/down offset", hint: "Toward the artwork bottom = negative. Toward the top = positive." },
+  { key: "z", label: "Z · Perpendicular distance", hint: "Perpendicular from the surface to the lens. Always positive." },
   { key: "ratio", label: "Lens ratio · 1 : width", hint: `GoboSolution lens ratios by model: ${BRAND_LENS_RATIOS}. Enter 0.5 for 1:0.5.` },
 ] as const;
 const signedPercent = (value: number) => {
@@ -183,7 +183,7 @@ export default function KeystoneTool() {
         </a>
         <p className="eyebrow">LOGO PROJECTION TOOLS</p>
         <h1>GOBO Keystone Correction Tool</h1>
-        <p>Prepare artwork for a projector aimed at a flat surface from an angle.</p>
+        <p>Prepare artwork for angled projection onto a wall, floor, or other flat surface.</p>
       </header>
 
       <div className={styles.layout}>
@@ -198,11 +198,11 @@ export default function KeystoneTool() {
           </fieldset>
           {usePosition ? <>
             <ol className={styles.measurementGuide}>
-              <li>Face the wall. Mark where you want the artwork center to land. This is the only origin, (0, 0).</li>
-              <li>From the lens, follow a line straight to the wall at a right angle. Mark that spot as the lens point.</li>
-              <li>From that same origin, measure X left or right and Y down or up to the lens point. Measure Z straight out from the wall to the lens.</li>
+              <li>Mark the desired artwork center on the projection surface. This is the only origin, (0, 0). Decide which edge of the artwork should be the top, especially for floor projection.</li>
+              <li>From the lens, follow a line perpendicular to the projection surface. Mark where it meets the surface as the lens point.</li>
+              <li>From that same origin, measure X left or right and Y toward the bottom or top of the artwork to reach the lens point. Measure Z from the lens point perpendicular to the surface to reach the lens.</li>
             </ol>
-            <p>The calculation assumes a flat wall and a level image, with the projector aimed at the target center.</p>
+            <p>The calculation assumes a flat surface, with the projector aimed at the target center and its image aligned to the chosen artwork orientation.</p>
             <InstallationDiagram unit={unit} />
             <label className={styles.unit}>
               Distance unit
@@ -233,7 +233,7 @@ export default function KeystoneTool() {
             {downloadError && <p className={styles.error} role="alert">The pattern could not be downloaded. Try again.</p>}
             <p>Use the projected center cross as (0, 0). Pick a square reference area centered on the cross and large enough to contain all four corners. Move points 1–4 to match the white border, starting at the top left and going clockwise.</p>
           </>}
-          <div className={styles.stage} ref={stage} role="group" aria-label="Square wall reference">
+          <div className={styles.stage} ref={stage} role="group" aria-label="Square projection surface reference">
             <svg viewBox="0 0 100 100" aria-hidden="true">
               {outline && <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
                 fill="none" stroke={mapping ? "#ffc77c" : "#ff9a9a"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
@@ -264,7 +264,7 @@ export default function KeystoneTool() {
               <button type="button" onClick={() => setCorners(SQUARE)}>Set to square</button>
             </div>
             {cornerOffsets && <>
-              <p className={styles.coordinates}>Offsets from the center dot, as a percentage of the reference square. Positive X is right. Positive Y is up.</p>
+              <p className={styles.coordinates}>Offsets from the center dot, as a percentage of the reference square. Positive X is right. Positive Y points toward the top of the artwork.</p>
               <ul className={styles.cornerList} aria-label="Corner offsets from the projection center">
                 {cornerOffsets.map((offset, index) => (
                   <li key={NAMES[index]}>{index + 1}. {offset}</li>
@@ -295,8 +295,8 @@ export default function KeystoneTool() {
           </section>
 
           <section className={styles.panel} aria-labelledby="projection-comparison">
-            <h2 id="projection-comparison">3. Compare on the wall</h2>
-            <p>Both previews show the same wall area and projection footprint. Before uses artwork fitted to the projector image. After shows the expected upright artwork at its original proportions, centered inside the footprint.</p>
+            <h2 id="projection-comparison">3. Compare on the projection surface</h2>
+            <p>Both previews show the same surface area and projection footprint. Before uses artwork fitted to the projector image. After shows the expected artwork aligned to the chosen orientation at its original proportions, centered inside the footprint.</p>
             {!target && <p className={styles.coordinates}>Complete calibration and choose artwork to see the comparison.</p>}
             <div className={styles.comparisonGrid}>
               {[
@@ -306,7 +306,7 @@ export default function KeystoneTool() {
                 <figure key={label}>
                   <figcaption>{label}</figcaption>
                   <div className={styles.wallPreview}>
-                    <canvas ref={canvas} width={360} height={360} role="img" aria-label={`${label}, expected view on the wall`} />
+                    <canvas ref={canvas} width={360} height={360} role="img" aria-label={`${label}, expected view on the projection surface`} />
                     {mapping && outline && (
                       <svg viewBox="0 0 100 100" aria-hidden="true">
                         <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}

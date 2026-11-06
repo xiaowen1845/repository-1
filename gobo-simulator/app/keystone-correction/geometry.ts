@@ -5,7 +5,7 @@ export type Rectangle = { left: number; top: number; width: number; height: numb
 const cross = (a: Point, b: Point, c: Point) =>
   (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 
-// Maps the square calibration image into the measured footprint on the wall.
+// Maps the square calibration image into the measured footprint on the projection surface.
 export function calibrate(corners: Quad) {
   if (corners.some(({ x, y }) => !Number.isFinite(x) || !Number.isFinite(y) ||
     x < 0 || x > 1 || y < 0 || y > 1)) return null;
@@ -62,7 +62,7 @@ type Vector = readonly [number, number, number];
 const IMAGE_CORNERS = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
 
 // Model a centered square image on a plane at z = 0, with the optical axis
-// aimed at the origin. X points right and Y points up as seen facing the wall.
+// aimed at the origin. X points right and Y points toward the top in the intended artwork orientation.
 export function projectInstallation({ x, y, z, widthRatio }: Installation) {
   if (![x, y, z, widthRatio].every(Number.isFinite) || z <= 0 || widthRatio <= 0) return null;
 
@@ -70,7 +70,7 @@ export function projectInstallation({ x, y, z, widthRatio }: Installation) {
   const distance = Math.hypot(horizontalDistance, y);
   const forward: Vector = [-x / distance, -y / distance, -z / distance];
   const right: Vector = [z / horizontalDistance, 0, -x / horizontalDistance];
-  // Keep the image level by making its horizontal axis parallel to the wall.
+  // Keep the image horizontal axis parallel to the projection surface.
   const up: Vector = [right[2] * -forward[1], horizontalDistance / distance, right[0] * forward[1]];
   const halfWidthRatio = widthRatio / 2;
   const footprint = IMAGE_CORNERS.flatMap(([column, row]) => {
