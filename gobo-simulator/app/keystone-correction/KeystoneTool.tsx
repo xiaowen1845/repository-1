@@ -33,9 +33,11 @@ export default function KeystoneTool() {
   }, [position]);
   const [artwork, setArtwork] = useState<{ image: ImageData; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const [downloadError, setDownloadError] = useState<"calibration" | "correction" | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLCanvasElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const before = useRef<HTMLCanvasElement>(null);
   const after = useRef<HTMLCanvasElement>(null);
   const uploadId = useRef(0);
@@ -89,9 +91,9 @@ export default function KeystoneTool() {
     const id = ++uploadId.current;
     setLoading(false);
     setArtwork(null);
-    setError("");
+    setUploadError("");
     if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 10 * 1024 * 1024) {
-      setError("Choose a PNG or JPEG file up to 10 MB.");
+      setUploadError("Choose a PNG or JPEG file up to 10 MB.");
       return;
     }
     setLoading(true);
@@ -112,14 +114,14 @@ export default function KeystoneTool() {
         bitmap.close();
       }
     } catch {
-      if (uploadId.current === id) setError("The image could not be opened. Try a different PNG or JPEG.");
+      if (uploadId.current === id) setUploadError("The image could not be opened. Try a different PNG or JPEG.");
     } finally {
       if (uploadId.current === id) setLoading(false);
     }
   }
 
   async function exportImage(kind: "calibration" | "correction") {
-    setError("");
+    setDownloadError(null);
     try {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = OUTPUT_SIZE;
@@ -143,7 +145,7 @@ export default function KeystoneTool() {
         await downloadPng(canvas, "gobosolution-keystone-corrected.png");
       }
     } catch {
-      setError("The PNG could not be downloaded. Please try again.");
+      setDownloadError(kind);
     }
   }
 
@@ -156,8 +158,8 @@ export default function KeystoneTool() {
       </header>
 
       <div className={styles.layout}>
-        <section>
-          <h2>1. Calibrate the projection</h2>
+        <section className={styles.panel} aria-labelledby="keystone-calibration">
+          <h2 id="keystone-calibration">1. Calibrate the projection</h2>
           <fieldset className={styles.mode}>
             <legend>Calibration method</legend>
             <label><input type="radio" name="keystone-method" checked={!usePosition}
@@ -171,7 +173,7 @@ export default function KeystoneTool() {
               {INSTALLATION_FIELDS.map(({ key, label, hint }) => (
                 <label key={key}>
                   {label}
-                  <input type="number" step="any" inputMode="decimal" value={position[key]}
+                  <input type="number" step="any" inputMode={key === "x" || key === "y" ? "text" : "decimal"} value={position[key]}
                     aria-describedby={`keystone-hint-${key}`}
                     onChange={event => setPosition({ ...position, [key]: event.target.value })} />
                   <span id={`keystone-hint-${key}`}>{hint}</span>
@@ -186,9 +188,10 @@ export default function KeystoneTool() {
           </> : <>
             <p>Project the square pattern at the final mounting angle, with the same lens and orientation you will use for the artwork. Keep the entire white border visible.</p>
             <button type="button" onClick={() => void exportImage("calibration")}>Download calibration pattern</button>
-            <p>Measure the four outer corners on the wall within a square reference area that contains them all. Use the same scale horizontally and vertically, with the origin at the top left. Move points 1–4 to match those positions.</p>
+            {downloadError === "calibration" && <p className={styles.error} role="alert">The pattern could not be downloaded. Try again.</p>}
+            <p>Measure the four outer corners on the wall within a square reference area that contains them all. Use the same scale horizontally and vertically, with the origin at the top left. Move points 1–4 from the example to match those positions.</p>
           </>}
-          <div className={styles.stage} ref={stage} aria-label="Square wall reference">
+          <div className={styles.stage} ref={stage} role="group" aria-label="Square wall reference">
             <svg viewBox="0 0 100 100" aria-hidden="true">
               {outline && <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
                 fill="none" stroke={mapping ? "#ffc77c" : "#ff9a9a"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
@@ -216,63 +219,75 @@ export default function KeystoneTool() {
               <button type="button" onClick={() => setCorners(INITIAL)}>Reset to example</button>
               <button type="button" onClick={() => setCorners(SQUARE)}>Set to square</button>
             </div>
-            <p className={styles.coordinates}>
-              {corners.map((point, index) => `${index + 1}. ${Math.round(point.x * 100)}%, ${Math.round(point.y * 100)}%`).join(" · ")}
-            </p>
-            {!mapping && <p role="alert">Use four distinct corners in order. The outline must be convex and its edges must not cross.</p>}
+            <ul className={styles.cornerList} aria-label="Corner coordinates">
+              {corners.map((point, index) => (
+                <li key={NAMES[index]}>{index + 1}. {Math.round(point.x * 100)}%, {Math.round(point.y * 100)}%</li>
+              ))}
+            </ul>
+            {!mapping && <p className={styles.error} role="alert">Use four distinct corners in order. The outline must be convex and its edges must not cross.</p>}
           </>}
         </section>
 
-        <section>
-          <h2>2. Add artwork and export</h2>
-          <label className={styles.upload}>
-            Choose artwork <span>PNG or JPEG, up to 10 MB</span>
-            <input type="file" accept="image/png,image/jpeg"
-              onChange={event => {
-                const file = event.currentTarget.files?.[0];
-                if (file) void loadArtwork(file);
-                event.currentTarget.value = "";
-              }} />
-          </label>
-          <p role="status">{loading ? "Reading artwork…" : artwork?.name}</p>
-          <h3>Pre-distorted artwork</h3>
-          <canvas ref={preview} width={480} height={480} className={styles.output}
-            role="img" aria-label="Preview of the pre-distorted artwork" />
-          <p>{usePosition
-              ? "Keep the modeled lens position and aim when projecting the corrected image."
-              : "Use the corrected PNG at the same size, position and orientation as the calibration pattern."}</p>
-          <button type="button" disabled={!target || loading} onClick={() => void exportImage("correction")}>
-            Download corrected PNG
-          </button>
-          <p className={styles.coordinates}>1024 × 1024 px with transparent padding. Check alignment with a test projection before production.</p>
-          {error && <p role="alert">{error}</p>}
-        </section>
-      </div>
+        <div className={styles.workspace}>
+          <section className={styles.panel} aria-labelledby="keystone-artwork">
+            <h2 id="keystone-artwork">2. Add artwork</h2>
+            <div className={styles.upload}>
+              <p className={styles.coordinates} id="keystone-file-formats">PNG or JPEG, up to 10 MB</p>
+              <button type="button" aria-describedby="keystone-file-formats" onClick={() => fileInput.current?.click()}>
+                {artwork ? "Replace artwork" : "Choose artwork"}
+              </button>
+              <input ref={fileInput} type="file" hidden accept="image/png,image/jpeg"
+                onChange={event => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) void loadArtwork(file);
+                  event.currentTarget.value = "";
+                }} />
+            </div>
+            <p className={styles.coordinates} role="status">{loading ? "Reading artwork…" : artwork?.name}</p>
+            {uploadError && <p className={styles.error} role="alert">{uploadError}</p>}
+          </section>
 
-      <section className={styles.comparison} aria-labelledby="projection-comparison">
-        <h2 id="projection-comparison">3. Compare the projection on the wall</h2>
-        <p>Both previews show the same wall area and projection footprint. Before uses artwork fitted to the projector image. After shows the upright artwork fitted within the footprint.</p>
-        {!target && <p className={styles.coordinates}>Complete calibration and choose artwork to see the comparison.</p>}
-        <div className={styles.comparisonGrid}>
-          {[
-            { label: "Before correction", canvas: before },
-            { label: "After correction", canvas: after },
-          ].map(({ label, canvas }) => (
-            <figure key={label}>
-              <figcaption>{label}</figcaption>
-              <div className={styles.wallPreview}>
-                <canvas ref={canvas} width={360} height={360} role="img" aria-label={`${label}, expected view on the wall`} />
-                {mapping && outline && (
-                  <svg viewBox="0 0 100 100" aria-hidden="true">
-                    <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
-                      fill="none" stroke="#ffc77c" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                  </svg>
-                )}
-              </div>
-            </figure>
-          ))}
+          <section className={styles.panel} aria-labelledby="projection-comparison">
+            <h2 id="projection-comparison">3. Compare on the wall</h2>
+            <p>Both previews show the same wall area and projection footprint. Before uses artwork fitted to the projector image. After shows the upright artwork fitted within the footprint.</p>
+            {!target && <p className={styles.coordinates}>Complete calibration and choose artwork to see the comparison.</p>}
+            <div className={styles.comparisonGrid}>
+              {[
+                { label: "Before correction", canvas: before },
+                { label: "After correction", canvas: after },
+              ].map(({ label, canvas }) => (
+                <figure key={label}>
+                  <figcaption>{label}</figcaption>
+                  <div className={styles.wallPreview}>
+                    <canvas ref={canvas} width={360} height={360} role="img" aria-label={`${label}, expected view on the wall`} />
+                    {mapping && outline && (
+                      <svg viewBox="0 0 100 100" aria-hidden="true">
+                        <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
+                          fill="none" stroke="#ffc77c" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      </svg>
+                    )}
+                  </div>
+                </figure>
+              ))}
+            </div>
+          </section>
+
+          <section className={styles.panel} aria-labelledby="keystone-export">
+            <h2 id="keystone-export">4. Export corrected artwork</h2>
+            <canvas ref={preview} width={480} height={480} className={styles.output}
+              role="img" aria-label="Preview of the pre-distorted artwork" />
+            <p>{usePosition
+                ? "Keep the modeled lens position and aim when projecting the corrected image."
+                : "Use the corrected PNG at the same size, position and orientation as the calibration pattern."}</p>
+            {!target && <p className={styles.coordinates}>Complete calibration and add artwork to enable the download.</p>}
+            <button type="button" disabled={!target || loading} onClick={() => void exportImage("correction")}>
+              Download corrected PNG
+            </button>
+            <p className={styles.coordinates}>1024 × 1024 px with transparent padding. Check alignment with a test projection before production.</p>
+            {downloadError === "correction" && <p className={styles.error} role="alert">The corrected PNG could not be downloaded. Try again.</p>}
+          </section>
         </div>
-      </section>
+      </div>
     </main>
   );
 }
