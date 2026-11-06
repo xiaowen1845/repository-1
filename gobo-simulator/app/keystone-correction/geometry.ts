@@ -22,12 +22,24 @@ export function calibrate(corners: Quad) {
   const g = (dx3 * dy2 - dx2 * dy3) / determinant;
   const h = (dx1 * dy3 - dx3 * dy1) / determinant;
 
-  return (x: number, y: number): Point => {
-    const w = g * x + h * y + 1;
-    return {
-      x: ((b.x - a.x + g * b.x) * x + (d.x - a.x + h * d.x) * y + a.x) / w,
-      y: ((b.y - a.y + g * b.y) * x + (d.y - a.y + h * d.y) * y + a.y) / w,
-    };
+  const ax = b.x - a.x + g * b.x;
+  const bx = d.x - a.x + h * d.x;
+  const ay = b.y - a.y + g * b.y;
+  const by = d.y - a.y + h * d.y;
+
+  return {
+    toWall(x: number, y: number): Point {
+      const w = g * x + h * y + 1;
+      return { x: (ax * x + bx * y + a.x) / w, y: (ay * x + by * y + a.y) / w };
+    },
+    toProjector(x: number, y: number): Point {
+      // Solve the two linear equations obtained by clearing the denominators.
+      const m = ax - g * x, n = bx - h * x;
+      const p = ay - g * y, q = by - h * y;
+      const dx = x - a.x, dy = y - a.y;
+      const det = m * q - n * p;
+      return { x: (dx * q - n * dy) / det, y: (m * dy - dx * p) / det };
+    },
   };
 }
 

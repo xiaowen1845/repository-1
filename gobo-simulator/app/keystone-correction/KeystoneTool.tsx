@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { calibrate, fitArtwork, projectInstallation, type Point, type Quad } from "./geometry";
-import { downloadPng, OUTPUT_SIZE, renderCorrection } from "./render";
+import { downloadPng, OUTPUT_SIZE, renderArtwork } from "./render";
 import styles from "./keystone.module.css";
 
 const NAMES = ["Top left", "Top right", "Bottom right", "Bottom left"];
@@ -11,6 +11,7 @@ const INITIAL: Quad = [
   { x: 0.81, y: 0.77 }, { x: 0.19, y: 0.87 },
 ];
 const SQUARE: Quad = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+const identity = (x: number, y: number) => ({ x, y });
 const AIM = { x: 0.5, y: 0.5 };
 const INSTALLATION_FIELDS = [
   { key: "x", label: "X · Horizontal offset (m)", hint: "Positive to the right" },
@@ -30,36 +31,40 @@ export default function KeystoneTool() {
       x: Number(position.x), y: Number(position.y), z: Number(position.z), widthRatio: Number(position.ratio),
     });
   }, [position]);
-  const [artwork, setArtwork] = useState<{ image: ImageData; url: string; name: string } | null>(null);
+  const [artwork, setArtwork] = useState<{ image: ImageData; name: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const stage = useRef<HTMLDivElement>(null);
   const preview = useRef<HTMLCanvasElement>(null);
+  const before = useRef<HTMLCanvasElement>(null);
+  const after = useRef<HTMLCanvasElement>(null);
   const uploadId = useRef(0);
   const outline = usePosition ? installation?.corners : corners;
-  const toWall = useMemo(() => outline ? calibrate(outline) : null, [outline]);
-  const target = useMemo(() => toWall && outline && artwork
+  const mapping = useMemo(() => outline ? calibrate(outline) : null, [outline]);
+  const target = useMemo(() => mapping && outline && artwork
     ? fitArtwork(outline, artwork.image.width / artwork.image.height, usePosition ? AIM : undefined)
-    : null, [toWall, outline, artwork, usePosition]);
+    : null, [mapping, outline, artwork, usePosition]);
 
   useEffect(() => {
-    const ctx = preview.current?.getContext("2d");
-    if (!ctx) return;
-    if (!toWall || !target || !artwork) {
-      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const output = preview.current?.getContext("2d");
+    const uncorrected = before.current?.getContext("2d");
+    const corrected = after.current?.getContext("2d");
+    if (!mapping || !target || !artwork) {
+      for (const context of [output, uncorrected, corrected]) {
+        if (context) context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+      }
       return;
     }
     const frame = requestAnimationFrame(() => {
-      renderCorrection(ctx, artwork.image, toWall, target);
+      if (output) renderArtwork(output, artwork.image, mapping.toWall, target);
+      if (uncorrected) {
+        const original = fitArtwork(SQUARE, artwork.image.width / artwork.image.height);
+        renderArtwork(uncorrected, artwork.image, mapping.toProjector, original);
+      }
+      if (corrected) renderArtwork(corrected, artwork.image, identity, target);
     });
     return () => cancelAnimationFrame(frame);
-  }, [toWall, target, artwork]);
-
-  useEffect(() => {
-    return () => {
-      if (artwork) URL.revokeObjectURL(artwork.url);
-    };
-  }, [artwork]);
+  }, [mapping, target, artwork]);
 
   useEffect(() => () => { uploadId.current++; }, []);
 
@@ -102,7 +107,7 @@ export default function KeystoneTool() {
         if (!context) throw new Error("Canvas unavailable.");
         context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
         const image = context.getImageData(0, 0, canvas.width, canvas.height);
-        setArtwork({ image, url: URL.createObjectURL(file), name: file.name });
+        setArtwork({ image, name: file.name });
       } finally {
         bitmap.close();
       }
@@ -133,8 +138,8 @@ export default function KeystoneTool() {
           context.fillText(label, SQUARE[index].x ? OUTPUT_SIZE - 80 : 80, SQUARE[index].y ? OUTPUT_SIZE - 80 : 80);
         });
         await downloadPng(canvas, "gobosolution-square-calibration.png");
-      } else if (artwork && toWall && target) {
-        renderCorrection(context, artwork.image, toWall, target);
+      } else if (artwork && mapping && target) {
+        renderArtwork(context, artwork.image, mapping.toWall, target);
         await downloadPng(canvas, "gobosolution-keystone-corrected.png");
       }
     } catch {
@@ -184,15 +189,9 @@ export default function KeystoneTool() {
             <p>Measure the four outer corners on the wall within a square reference area that contains them all. Use the same scale horizontally and vertically, with the origin at the top left. Move points 1–4 to match those positions.</p>
           </>}
           <div className={styles.stage} ref={stage} aria-label="Square wall reference">
-            {target && artwork && (
-              /* eslint-disable-next-line @next/next/no-img-element -- Browser-local artwork blob. */
-              <img src={artwork.url} alt="Expected artwork on the wall"
-                style={{ left: `${target.left * 100}%`, top: `${target.top * 100}%`,
-                  width: `${target.width * 100}%`, height: `${target.height * 100}%` }} />
-            )}
             <svg viewBox="0 0 100 100" aria-hidden="true">
               {outline && <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
-                fill="none" stroke={toWall ? "#ffc77c" : "#ff9a9a"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
+                fill="none" stroke={mapping ? "#ffc77c" : "#ff9a9a"} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
               {usePosition && installation && <circle cx="50" cy="50" r="1" fill="#ffc77c" />}
             </svg>
             {!usePosition && corners.map((point, index) => (
@@ -220,7 +219,7 @@ export default function KeystoneTool() {
             <p className={styles.coordinates}>
               {corners.map((point, index) => `${index + 1}. ${Math.round(point.x * 100)}%, ${Math.round(point.y * 100)}%`).join(" · ")}
             </p>
-            {!toWall && <p role="alert">Use four distinct corners in order. The outline must be convex and its edges must not cross.</p>}
+            {!mapping && <p role="alert">Use four distinct corners in order. The outline must be convex and its edges must not cross.</p>}
           </>}
         </section>
 
@@ -239,9 +238,9 @@ export default function KeystoneTool() {
           <h3>Pre-distorted artwork</h3>
           <canvas ref={preview} width={480} height={480} className={styles.output}
             role="img" aria-label="Preview of the pre-distorted artwork" />
-          <p>The orange outline shows the projection footprint. The artwork inside it shows the expected shape on the wall. {usePosition
-              ? " Keep the modeled lens position and aim when projecting the corrected image."
-              : " Use the corrected PNG at the same size, position and orientation as the calibration pattern."}</p>
+          <p>{usePosition
+              ? "Keep the modeled lens position and aim when projecting the corrected image."
+              : "Use the corrected PNG at the same size, position and orientation as the calibration pattern."}</p>
           <button type="button" disabled={!target || loading} onClick={() => void exportImage("correction")}>
             Download corrected PNG
           </button>
@@ -249,6 +248,31 @@ export default function KeystoneTool() {
           {error && <p role="alert">{error}</p>}
         </section>
       </div>
+
+      <section className={styles.comparison} aria-labelledby="projection-comparison">
+        <h2 id="projection-comparison">3. Compare the projection on the wall</h2>
+        <p>Both previews show the same wall area and projection footprint. Before uses artwork fitted to the projector image. After shows the upright artwork fitted within the footprint.</p>
+        {!target && <p className={styles.coordinates}>Complete calibration and choose artwork to see the comparison.</p>}
+        <div className={styles.comparisonGrid}>
+          {[
+            { label: "Before correction", canvas: before },
+            { label: "After correction", canvas: after },
+          ].map(({ label, canvas }) => (
+            <figure key={label}>
+              <figcaption>{label}</figcaption>
+              <div className={styles.wallPreview}>
+                <canvas ref={canvas} width={360} height={360} role="img" aria-label={`${label}, expected view on the wall`} />
+                {mapping && outline && (
+                  <svg viewBox="0 0 100 100" aria-hidden="true">
+                    <polygon points={outline.map(p => `${p.x * 100},${p.y * 100}`).join(" ")}
+                      fill="none" stroke="#ffc77c" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  </svg>
+                )}
+              </div>
+            </figure>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

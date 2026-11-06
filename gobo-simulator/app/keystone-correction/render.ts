@@ -28,19 +28,19 @@ function sample(source: ImageData, x: number, y: number, output: Uint8ClampedArr
   output[offset + 3] = alpha;
 }
 
-export function renderCorrection(
+export function renderArtwork(
   context: CanvasRenderingContext2D,
   artwork: ImageData,
-  toWall: (x: number, y: number) => Point,
+  mapToReference: (x: number, y: number) => Point,
   target: Rectangle,
 ) {
   const { width, height } = context.canvas;
   const output = context.createImageData(width, height);
-  // For each projector pixel, find the wall point it illuminates and sample
-  // the intended artwork there. Pixels outside the target stay transparent.
+  // Map each output pixel into the artwork's reference frame. Pixels outside
+  // the artwork rectangle stay transparent.
   for (let row = 0; row < height; row++) {
     for (let column = 0; column < width; column++) {
-      const point = toWall((column + 0.5) / width, (row + 0.5) / height);
+      const point = mapToReference((column + 0.5) / width, (row + 0.5) / height);
       const x = (point.x - target.left) / target.width;
       const y = (point.y - target.top) / target.height;
       if (x >= 0 && x < 1 && y >= 0 && y < 1) {
