@@ -1,17 +1,13 @@
-.tool {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: clamp(1rem, 4vw, 3rem);
-  color: #f5f7fa;
-  font-family: system-ui, sans-serif;
-  line-height: 1.55;
-}
+.tool .panel p { margin: .7rem 0; }
 
-.tool header { margin-bottom: 2rem; }
-.tool h1 { font-size: clamp(1.75rem, 5vw, 3.1rem); line-height: 1.15; }
-.tool h2 { font-size: 1.3rem; }
-.tool p { margin: .7rem 0; }
-.brand { color: #ffc77c; font-weight: 700; }
+.measurementGuide {
+  padding-inline-start: 1.2rem;
+  list-style: decimal;
+  color: var(--muted);
+  font-size: .875rem;
+  line-height: 1.65;
+}
+.measurementGuide li + li { margin-top: .35rem; }
 
 .layout {
   display: grid;
@@ -49,7 +45,7 @@
 .error { color: #ffb4b4; }
 .tool :focus-visible { outline: 2px solid white; outline-offset: 3px; }
 .upload { display: grid; justify-items: start; gap: .35rem; margin: .75rem 0; }
-.upload p { margin: 0; }
+.tool .upload p { margin: 0; }
 .coordinates, .cornerList { color: #c1ccdf; font-size: .875rem; overflow-wrap: anywhere; }
 .cornerList { display: flex; flex-wrap: wrap; gap: .25rem .8rem; margin-top: .75rem; }
 .cornerList li { white-space: nowrap; }
@@ -153,5 +149,6 @@
 .wallPlane { fill: #1b283a; stroke: #697990; }
 .axisLine { fill: none; stroke: #ffc77c; stroke-width: 2; }
 .axisDot { fill: #ffc77c; }
+.leader { fill: none; stroke: #c1ccdf; }
 .aimLine { fill: none; stroke: #c1ccdf; stroke-dasharray: 4 4; }
 .installationDiagram .axisLabel { fill: #ffc77c; font-weight: 700; }

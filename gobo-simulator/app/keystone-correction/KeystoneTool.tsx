@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { calibrate, convertDistance, fitArtwork, projectInstallation, type DistanceUnit, type Point, type Quad } from "./geometry";
 import { downloadPng, OUTPUT_SIZE, renderArtwork } from "./render";
@@ -18,9 +19,9 @@ const AIM = { x: 0.5, y: 0.5 };
 const BRAND_LENS_RATIOS = LENSES.map(ratio => `1:${ratio}`).join(", ");
 const DISTANCE_KEYS = ["x", "y", "z"] as const;
 const INSTALLATION_FIELDS = [
-  { key: "x", label: "X · Horizontal offset", hint: "Negative = left · Positive = right" },
-  { key: "y", label: "Y · Vertical offset", hint: "Negative = below · Positive = above" },
-  { key: "z", label: "Z · Perpendicular distance", hint: "Measure straight out from the surface" },
+  { key: "x", label: "X · Horizontal offset", hint: "Lens point left of target = negative. Right = positive." },
+  { key: "y", label: "Y · Vertical offset", hint: "Lens point below target = negative. Above = positive." },
+  { key: "z", label: "Z · Perpendicular distance", hint: "Straight from the wall to the lens. Always positive." },
   { key: "ratio", label: "Lens ratio · 1 : width", hint: `GoboSolution lens ratios by model: ${BRAND_LENS_RATIOS}. Enter 0.5 for 1:0.5.` },
 ] as const;
 const signedPercent = (value: number) => {
@@ -175,9 +176,12 @@ export default function KeystoneTool() {
   }
 
   return (
-    <main className={styles.tool}>
-      <header>
-        <p className={styles.brand}>GoboSolution</p>
+    <main className={`simulator-inner ${styles.tool}`}>
+      <header className="page-header">
+        <a className="wordmark" href="https://gobosolution.com/" target="_top" aria-label="GoboSolution home">
+          <Image src="/brand/gobosolution-logo.png" alt="GoboSolution" width={300} height={59} unoptimized />
+        </a>
+        <p className="eyebrow">LOGO PROJECTION TOOLS</p>
         <h1>GOBO Keystone Correction Tool</h1>
         <p>Prepare artwork for a projector aimed at a flat surface from an angle.</p>
       </header>
@@ -193,7 +197,12 @@ export default function KeystoneTool() {
               onChange={() => setUsePosition(true)} /> Plan an installation · enter X/Y/Z</label>
           </fieldset>
           {usePosition ? <>
-            <p>Face the projection surface and use the intended artwork center as the origin. Measure from the projector lens. This estimate assumes a flat surface, a level image, and a lens aimed at the target center.</p>
+            <ol className={styles.measurementGuide}>
+              <li>Face the wall and mark where you want the center of the artwork to land.</li>
+              <li>From the lens, follow a line straight to the wall at a right angle. Mark that spot as the lens point.</li>
+              <li>Measure X and Y on the wall from the target center to the lens point. Measure Z from the lens point straight out to the lens.</li>
+            </ol>
+            <p>The calculation assumes a flat wall and a level image, with the projector aimed at the target center.</p>
             <InstallationDiagram unit={unit} />
             <label className={styles.unit}>
               Distance unit

@@ -9,8 +9,8 @@ export default function InstallationDiagram({ unit }: { unit: DistanceUnit }) {
       <svg viewBox="0 0 316 218" role="img" aria-labelledby="keystone-diagram-title keystone-diagram-description">
         <title id="keystone-diagram-title">Example projector installation</title>
         <desc id="keystone-diagram-description">
-          Start at the target center on the wall. Move right along the wall for X, up along the wall for Y,
-          then straight out, perpendicular to the wall, for Z to reach the projector lens.
+          X and Y are the horizontal and vertical offsets from the desired target center to the lens point on the wall.
+          Z is the perpendicular distance from the lens point to the physical lens. The dashed line shows the projector aiming at the target.
         </desc>
         <path className={styles.wallPlane} d="M18 28 154 92 154 211 18 147Z" />
         <text x="18" y="20">Wall</text>
@@ -18,6 +18,9 @@ export default function InstallationDiagram({ unit }: { unit: DistanceUnit }) {
         <path className={styles.axisLine} d="M68 129 125 156V88H266" />
         <path className={styles.axisLine} d="m117 147 8 9-11 1m6-61 5-8 5 8m128-13 8 5-8 5" />
         <circle cx="68" cy="129" r="3.5" className={styles.axisDot} />
+        <path className={styles.leader} d="M125 82 116 64H82" />
+        <circle cx="125" cy="88" r="3.5" className={styles.axisDot} />
+        <text x="83" y="58">Lens point on wall</text>
         <text x="24" y="123">Target</text>
         <text x="24" y="138">center</text>
         <text className={styles.axisLabel} x="92" y="163">X</text>
@@ -29,8 +32,8 @@ export default function InstallationDiagram({ unit }: { unit: DistanceUnit }) {
         <text x="241" y="135">lens</text>
       </svg>
       <figcaption>
-        Example from the target center. X is {example(0.6)} right, Y is {example(0.4)} up,
-        and Z is {example(3)} straight out from the wall. The dashed line shows where the lens aims.
+        Example. The lens point is {example(0.6)} right and {example(0.4)} above the target center.
+        The lens is {example(3)} straight out from that point. The dashed line shows the aim toward the target center.
       </figcaption>
     </figure>
   );
